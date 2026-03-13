@@ -1,0 +1,74 @@
+[tool.poetry]
+name = "sphinxcontrib-archware"
+# Version is set automatically from the git tag by poetry-dynamic-versioning.
+# The placeholder "0.0.0" is never published.
+version = "0.0.0"
+readme = "README.md"
+description = "Sphinx extension to render bytefield and register hardware diagrams as SVG."
+license = "MIT"
+authors = ["Aras Ashraf Gandomi <aras.gandomi@gmail.com>"]
+keywords = ["sphinx", "bytefield", "register", "memory", "cpu", "architecture", "hardware"]
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Framework :: Sphinx :: Extension",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Documentation",
+    "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
+]
+# The package directory is sphinxcontrib/ at the repository root.
+packages = [{include = "archware", from="sphinxcontrib"}]
+
+[tool.poetry.urls]
+Homepage      = "https://AAGandomi.github.io/sphinxcontrib-archware/"
+Repository    = "https://github.com/AAGandomi/sphinxcontrib-archware"
+Documentation = "https://sphinxcontrib-archware.readthedocs.io"
+Issues        = "https://github.com/AAGandomi/sphinxcontrib-archware/issues"
+
+[tool.poetry.dependencies]
+python = ">=3.9,<4.0"
+sphinx = ">=5.0"
+sphinx-rtd-theme = "^3.1.0"
+
+[tool.poetry.group.dev.dependencies]
+black       = ">=24.0,<25.0"
+pre-commit  = ">=3.0"
+# poetry-dynamic-versioning must also be installed as a Poetry plugin:
+#   poetry self add poetry-dynamic-versioning
+# Adding it here makes it available in CI virtual environments via
+# `poetry install --with dev`.
+poetry-dynamic-versioning = ">=1.0"
+
+# ---------------------------------------------------------------------------
+# Dynamic versioning — derives the package version from the git tag.
+# One-time setup per machine / CI runner:
+#   poetry self add poetry-dynamic-versioning
+# ---------------------------------------------------------------------------
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs    = "git"
+style  = "pep440"
+
+# ---------------------------------------------------------------------------
+# Build system — the dynamic-versioning wrapper injects the tag-derived
+# version before handing off to poetry-core for the actual build.
+# ---------------------------------------------------------------------------
+[build-system]
+requires      = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
+
+# ---------------------------------------------------------------------------
+# Black configuration — kept in sync with .pre-commit-config.yaml and
+# .github/workflows/lint.yml so all three enforce identical formatting.
+# ---------------------------------------------------------------------------
+[tool.black]
+line-length    = 88
+target-version = ["py39", "py310", "py311", "py312", "py313"]

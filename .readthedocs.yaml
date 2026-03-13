@@ -1,0 +1,84 @@
+# .readthedocs.yaml
+# ReadTheDocs build configuration.
+#
+# Reference: https://docs.readthedocs.io/en/stable/config-file/v2.html
+#
+# Dependencies are installed from docs/requirements.txt, which is exported
+# from Poetry and committed to the repository:
+#
+#   poetry export --with docs --without-hashes -o docs/requirements.txt
+#
+# Re-run this command whenever the docs dependency group changes and commit
+# the updated file.
+#
+# LaTeX and SVG tools are installed at the system level via apt_packages so
+# that the sphinxcontrib-archware extension can compile diagrams during the
+# HTML build.
+#
+# Required LaTeX packages
+# -----------------------
+# texlive-latex-base        core LaTeX
+# texlive-latex-extra       standalone class, float, calc, …
+# texlive-latex-recommended common packages (geometry, hyperref, …)
+# texlive-pictures          bytefield package
+# texlive-science           register package
+# texlive-fonts-recommended standard fonts
+# texlive-fonts-extra       lmodern and extended font support
+# lmodern                   Latin Modern fonts (explicit, belt-and-braces)
+# dvisvgm                   DVI → SVG converter (primary pipeline)
+# inkscape                  PDF → SVG converter (fallback pipeline)
+
+version: 2
+
+build:
+  os: ubuntu-22.04
+
+  tools:
+    python: "3.12"
+
+  # System packages installed before the Python environment is created.
+  # These run as root; no sudo prefix is needed.
+  apt_packages:
+    # TeX Live collections
+    - texlive-latex-base
+    - texlive-latex-extra
+    - texlive-latex-recommended
+    - texlive-pictures
+    - texlive-science
+    - texlive-fonts-recommended
+    - texlive-fonts-extra
+    - lmodern
+    # SVG converters
+    - dvisvgm
+    - inkscape
+
+  jobs:
+    # Install Poetry, then use it to export the docs requirements and
+    # install the package itself.  RTD does not invoke Poetry natively,
+    # so we drive it from a pre_install job step.
+    pre_install:
+      - pip install poetry
+      - poetry install --with docs --no-root
+      - pip install .
+
+    # Verify that all required tools are present and print their versions
+    # so any missing binary is immediately visible in the RTD build log.
+    post_install:
+      - latex --version | head -1
+      - dvisvgm --version
+      - inkscape --version
+
+# Python dependencies come from the pre_install step above.
+# The python.install block is intentionally omitted to avoid RTD
+# running a second conflicting install.
+
+# Sphinx configuration
+sphinx:
+  configuration: docs/conf.py
+  fail_on_warning: false
+
+# Build HTML output only.  PDF output from Sphinx's LaTeX builder is not
+# needed on RTD because the extension already handles diagram compilation
+# during the HTML build.
+formats:
+  - htmlzip

@@ -1,0 +1,28 @@
+# .pre-commit-config.yaml
+#
+# Runs black automatically before every local commit.
+#
+# First-time setup
+# ----------------
+# 1. Install pre-commit (once per machine):
+#
+#       pip install pre-commit
+#       # or, if you prefer to keep it in Poetry's dev group:
+#       poetry add --group dev pre-commit
+#
+# 2. Install the git hook into this repository (once per clone):
+#
+#       pre-commit install
+#
+# After that, black runs automatically on every `git commit`.
+# To run all hooks manually against every file:
+#
+#       pre-commit run --all-files
+
+repos:
+  - repo: https://github.com/psf/black
+    # Keep this version in sync with the pin in .github/workflows/lint.yml
+    rev: 24.10.0
+    hooks:
+      - id: black
+        language_version: python3

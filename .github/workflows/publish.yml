@@ -1,0 +1,113 @@
+name: Publish to PyPI
+
+# Triggered when a version tag of the form X.Y.Z (or vX.Y.Z) is pushed.
+# The version is derived automatically from the tag by poetry-dynamic-versioning,
+# so the version field in pyproject.toml never needs to be updated manually.
+#
+# Prerequisites
+# -------------
+# 1. Add poetry-dynamic-versioning to pyproject.toml (see README.rst).
+# 2. Configure OIDC trusted publishing once in your PyPI project settings:
+#      Publisher:  GitHub Actions
+#      Owner:      AAGandomi
+#      Repository: sphinxcontrib-archware
+#      Workflow:   publish.yml
+#    No API token or secret is needed.
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+  # ─── 1. Lint ───────────────────────────────────────────────────────────────
+  # Run black in check mode before building.  A publish triggered by a tag
+  # should never have unformatted code, but this acts as a final safety net.
+  lint:
+    name: Check formatting (black)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install black
+        run: pip install "black>=24.0,<25.0"
+
+      - name: Run black --check
+        run: black --check .
+
+  # ─── 2. Build source distribution and wheel ────────────────────────────────
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: Check out source
+        # Full history is required so that poetry-dynamic-versioning can
+        # read the git tag and set the package version correctly.
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install build dependencies
+        # poetry-dynamic-versioning must be installed in the same environment
+        # that the build frontend uses.  python -m build --no-isolation reuses
+        # the current environment rather than creating a fresh isolated one,
+        # so the backend is always discoverable.
+        run: |
+          pip install "poetry-dynamic-versioning[plugin]"
+          pip install build
+
+      - name: Build sdist and wheel
+        run: python -m build --no-isolation
+
+      - name: Upload build artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  # ─── 3. Publish to PyPI via OIDC trusted publishing ───────────────────────
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/sphinxcontrib-archware
+
+    # Required for OIDC token exchange with PyPI
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download build artefacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

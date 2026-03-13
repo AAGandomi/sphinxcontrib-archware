@@ -1,0 +1,33 @@
+name: Lint
+
+# Run on every push to any branch and on every pull request.
+# This catches formatting issues early, before they reach a release tag.
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+jobs:
+  black:
+    name: Check formatting (black)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install black
+        # Pin to the same version as in pyproject.toml / .pre-commit-config.yaml
+        # to avoid false differences between local and CI runs.
+        run: pip install "black>=24.0,<25.0"
+
+      - name: Run black --check
+        # --diff prints the changes black would make, making failures easy
+        # to understand without having to run black locally.
+        run: black --check --diff .
