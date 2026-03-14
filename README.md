@@ -1,5 +1,11 @@
 # sphinxcontrib-archware
 
+
+[![Documentation Status](https://readthedocs.org/projects/sphinxcontrib-archware/badge/?version=latest)](https://sphinxcontrib-archware.readthedocs.io/en/latest/?badge=latest)
+[![PyPI version](https://img.shields.io/pypi/v/sphinxcontrib-archware)](https://pypi.org/project/sphinxcontrib-archware/)
+
+
+
 A Sphinx extension for documenting digital hardware in RST.
 
 It provides directives for rendering
