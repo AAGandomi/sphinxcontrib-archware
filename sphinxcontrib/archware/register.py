@@ -36,10 +36,17 @@ import textwrap
 from typing import Any
 
 from docutils import nodes
-from docutils.parsers.rst import Directive, directives
+from docutils.parsers.rst import directives
 from sphinx.util import logging
+from sphinx.util.docutils import SphinxDirective
 
-from .pipeline import clean_svg, compile_to_svg, error_block, get_cache_dir
+from .pipeline import (
+    _LATEX_TEMPLATE_FOR_SVG_EXPORT,
+    clean_svg,
+    compile_to_svg,
+    error_block,
+    get_cache_dir,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -60,35 +67,10 @@ logger = logging.getLogger(__name__)
 # after the register package is loaded, replacing the float entirely.  The
 # starred register* environment is then used so no caption or list-of-registers
 # entry is attempted.
-_REGISTER_TEMPLATE = textwrap.dedent(
-    r"""
-    \documentclass[varwidth, crop=true, border={border}]{{standalone}}
-    \usepackage[T1]{{fontenc}}
-    \usepackage{{lmodern}}
-    \usepackage{{graphicx}}
-    \usepackage{{float}}
-    \usepackage[{pkg_options}]{{register}}
-    {extra_packages}
-    %% Make Regfloat a no-op so the float package's internal machinery
-    %% (\lastbox, \unkern, \unpenalty, group nesting) is never invoked.
-    %% The [1][] spec consumes the optional placement argument [H] that
-    %% register* passes.  register* already provides \centering itself.
-    \renewenvironment{{Regfloat}}[1][]{{}}{{}}
-    \begin{{document}}
-    \renewcommand{{\regBitWidth}}{{{bitwidth}}}
-    \begin{{register*}}{{H}}{{{name}}}{{{address}}}
-    {body}
-    \end{{register*}}
-    \end{{document}}
-"""
-).lstrip()
 
 
 def _build_register_source(
     latex_body: str,
-    name: str,
-    address: str,
-    bitwidth: int,
     pkg_options: str,
     extra_packages: str,
     border: str,
@@ -100,12 +82,10 @@ def _build_register_source(
         if pkg:
             pkg_lines += f"\\usepackage{{{pkg}}}\n"
 
-    return _REGISTER_TEMPLATE.format(
+    return _LATEX_TEMPLATE_FOR_SVG_EXPORT.format(
         border=border,
-        pkg_options=pkg_options,
-        bitwidth=bitwidth,
-        name=name,
-        address=address,
+        bytefield_pkg_options="",
+        register_pkg_options=pkg_options,
         extra_packages=pkg_lines,
         body=latex_body,
     )
@@ -210,7 +190,7 @@ class register_node(nodes.General, nodes.Element):
     """
 
 
-class RegisterDirective(Directive):
+class RegisterDirective(SphinxDirective):
     """
     Render a ``register`` diagram as inline SVG (HTML) or a register float
     (LaTeX).
@@ -262,12 +242,21 @@ class RegisterDirective(Directive):
         user_opts = self.options.get("options", "")
         color_opt = "color" if "color" in self.options else ""
         pkg_options = ", ".join(filter(None, [color_opt, user_opts]))
+        if not pkg_options:
+            pkg_options = getattr(self.env.config, "register_package_options", "")
 
         scale_raw = self.options.get("scale", None)
 
+        latex_body = (
+            f"\\renewcommand{{\\regBitWidth}}{{{self.options.get("bitwidth", 32)}}}"
+            f"\\begin{{register*}}{{H}}{{{self.options.get("name", "")}}}{{{self.options.get("address", "")}}}\n"
+            f"{latex_body}\n"
+            f"\\end{{register*}}\n"
+        )
+
         node = register_node()
         node["latex"] = latex_body
-        node["name"] = self.options["name"]
+        node["name"] = self.options.get("name", "")
         node["address"] = self.options.get("address", "")
         node["bitwidth"] = self.options.get("bitwidth", 32)
         node["pkg_options"] = pkg_options
@@ -287,9 +276,6 @@ def visit_register_html(self: Any, node: register_node) -> None:
     """Compile the register diagram and splice the SVG into the HTML body."""
     full_source = _build_register_source(
         latex_body=node["latex"],
-        name=node["name"],
-        address=node["address"],
-        bitwidth=node["bitwidth"],
         pkg_options=node["pkg_options"],
         extra_packages=node["packages"],
         border=node["border"],
@@ -322,7 +308,7 @@ def visit_register_html(self: Any, node: register_node) -> None:
 
 
 def depart_register_html(self: Any, node: register_node) -> None:
-    pass
+    pass  # never reached — visit raises SkipNode
 
 
 # ── LaTeX visitors ────────────────────────────────────────────────────────────
@@ -335,18 +321,15 @@ def visit_register_latex(self: Any, node: register_node) -> None:
     The unstarred environment is used so that the diagram is counted, captioned,
     and listed by ``\\listofregisters``.
     """
-    address = node["address"]
-    name = node["name"]
-    addr_str = address if address else ""
-    self.body.append(f"\n\\renewcommand{{\\regBitWidth}}{{{node['bitwidth']}}}\n")
-    self.body.append(f"\\begin{{register}}{{H}}{{{name}}}{{{addr_str}}}\n")
-    self.body.append(node["latex"])
-    self.body.append("\n\\end{register}\n")
+    latex_body = node["latex"].replace(node["name"], _latex_escape(node["name"]))
+    latex_body = latex_body.replace(node["address"], _latex_escape(node["address"]))
+    latex_body = latex_body.replace("register*", "register")
+    self.body.append(latex_body)
     raise nodes.SkipNode
 
 
 def depart_register_latex(self: Any, node: register_node) -> None:
-    pass
+    pass  # never reached — visit raises SkipNode
 
 
 # ── Unsupported-format visitors ───────────────────────────────────────────────
@@ -361,7 +344,7 @@ def visit_register_unsupported(self: Any, node: register_node) -> None:
 
 
 def depart_register_unsupported(self: Any, node: register_node) -> None:
-    pass
+    pass  # never reached — visit raises SkipNode
 
 
 # ===========================================================================
@@ -379,7 +362,7 @@ class regdesc_node(nodes.General, nodes.Element):
     """
 
 
-class RegdescDirective(Directive):
+class RegdescDirective(SphinxDirective):
     """
     Document register fields using a plain RST definition list.
 
@@ -482,7 +465,7 @@ def visit_regdesc_latex(self: Any, node: regdesc_node) -> None:
 
 
 def depart_regdesc_latex(self: Any, node: regdesc_node) -> None:
-    pass
+    pass  # never reached — visit raises SkipNode
 
 
 # ── Unsupported-format visitors ───────────────────────────────────────────────
@@ -497,7 +480,7 @@ def visit_regdesc_unsupported(self: Any, node: regdesc_node) -> None:
 
 
 def depart_regdesc_unsupported(self: Any, node: regdesc_node) -> None:
-    pass
+    pass  # never reached — visit raises SkipNode
 
 
 # ===========================================================================
@@ -515,7 +498,7 @@ class listofregisters_node(nodes.General, nodes.Element):
     """
 
 
-class ListofregistersDirective(Directive):
+class ListofregistersDirective(SphinxDirective):
     """
     Insert a list of all ``.. register::`` diagrams in the document.
 
@@ -542,7 +525,7 @@ def visit_listofregisters_html(self: Any, node: listofregisters_node) -> None:
 
 
 def depart_listofregisters_html(self: Any, node: listofregisters_node) -> None:
-    pass
+    pass  # never reached — visit raises SkipNode
 
 
 def visit_listofregisters_latex(self: Any, node: listofregisters_node) -> None:
@@ -551,7 +534,7 @@ def visit_listofregisters_latex(self: Any, node: listofregisters_node) -> None:
 
 
 def depart_listofregisters_latex(self: Any, node: listofregisters_node) -> None:
-    pass
+    pass  # never reached — visit raises SkipNode
 
 
 def visit_listofregisters_unsupported(self: Any, node: listofregisters_node) -> None:
@@ -559,7 +542,7 @@ def visit_listofregisters_unsupported(self: Any, node: listofregisters_node) -> 
 
 
 def depart_listofregisters_unsupported(self: Any, node: listofregisters_node) -> None:
-    pass
+    pass  # never reached — visit raises SkipNode
 
 
 # ===========================================================================

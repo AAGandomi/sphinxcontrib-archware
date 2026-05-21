@@ -106,8 +106,8 @@ of a register diagram with a ``.. regdesc::`` block.
       Chip identifies itself as a Host bridge.
 
    Revision
-      (Read only) Chip revision number.  Bits 4–7 provide the major revision
-      number, and bits 0–3 provide the minor revision number.
+      (Read only) Chip revision number.  Bits 4-7 provide the major revision
+      number, and bits 0-3 provide the minor revision number.
 
 
 Example register (Register 3.1)
@@ -293,7 +293,7 @@ and the ``\regBitWidth`` / ``:bitwidth:`` option.
 
    Flags
       Control flags.  Bit 7: interrupt on completion.  Bit 6: chain to next
-      descriptor.  Bits 5–0: reserved, must be zero.
+      descriptor.  Bits 5-0: reserved, must be zero.
 
    Priority
       Arbitration priority.  Higher values indicate higher priority.

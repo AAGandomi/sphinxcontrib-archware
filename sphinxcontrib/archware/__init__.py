@@ -8,29 +8,29 @@ as inline SVG in HTML output.
 Directives
 ----------
 ``.. bytefield::``
-    Renders a ``bytefield`` environment.  See ``_bytefield.py``.
+    Renders a ``bytefield`` environment.  See ``bytefield.py``.
 
 ``.. register::``
-    Renders a ``register`` diagram.  See ``_register.py``.
+    Renders a ``register`` diagram.  See ``register.py``.
 
 ``.. regdesc::``
     Documents register fields using a plain RST definition list.
-    See ``_register.py``.
+    See ``register.py``.
 
 ``.. listofregisters::``
     Inserts a list of all ``.. register::`` diagrams in the document.
-    See ``_register.py``.
+    See ``register.py``.
 
 Module layout
 -------------
-``_pipeline.py``
+``pipeline.py``
     Shared LaTeX-to-SVG compilation pipeline.  No knowledge of any specific
     LaTeX package.
 
-``_bytefield.py``
+``bytefield.py``
     ``bytefield``-specific node, directive, template, and writer visitors.
 
-``_register.py``
+``register.py``
     ``register``-specific nodes, directives, templates, writer visitors, and
     the ``doctree-resolved`` event handler for ``listofregisters``.
 
@@ -80,17 +80,6 @@ from .register import (
     visit_register_latex,
     visit_register_unsupported,
 )
-
-# ---------------------------------------------------------------------------
-# Shared unsupported-format visitor pair for concise registration below
-# ---------------------------------------------------------------------------
-
-_UNSUPPORTED = {
-    "text": (visit_bytefield_unsupported, depart_bytefield_unsupported),
-    "man": (visit_bytefield_unsupported, depart_bytefield_unsupported),
-    "texinfo": (visit_bytefield_unsupported, depart_bytefield_unsupported),
-}
-
 
 # ---------------------------------------------------------------------------
 # Automatic preamble injection for LaTeX builds
@@ -154,7 +143,7 @@ def _on_config_inited(app: Any, config: Any) -> None:
 %% -------------------------------------------------------------------------
 """
     existing = config.latex_elements.get("preamble", "")
-    config.latex_elements["preamble"] = existing + custom_commands
+    config.latex_elements["preamble"] = custom_commands + existing
 
 
 # ---------------------------------------------------------------------------
