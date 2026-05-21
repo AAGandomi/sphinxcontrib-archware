@@ -78,7 +78,7 @@ as follows::
 Directives
 ----------
 
-.. contents:: The following Shinx directives are defined in this package
+.. contents:: The following Sphinx directives are defined in this package
    :local:
    :depth: 1
 
@@ -102,7 +102,7 @@ Do not include the ``bytefield`` environment in the body.
       :packages: <pkg1>, <pkg2>, ...
       :align:    left | center | right
       :caption:  <text>
-      :scale:    <0–100>
+      :scale:    <0-100>
       :border:   <TeX length>
 
       \bitheader{...} \\
@@ -140,7 +140,7 @@ Do not include the ``bytefield`` environment in the body.
      - *(none)*
      - Text rendered as a ``<figcaption>`` below the diagram.
    * - ``:scale:``
-     - integer 0–100
+     - integer 0-100
      - ``100``
      - Scale factor as a percentage. ``75`` shrinks the SVG to 75 % of its
        natural size.
@@ -180,7 +180,7 @@ issues in the standalone document.  For LaTeX output the numbered
       :packages: <pkg1>, <pkg2>, ...
       :align:    left | center | right
       :caption:  <text>
-      :scale:    <0–100>
+      :scale:    <0-100>
       :border:   <TeX length>
 
       \regfield{name}{length}{startbit}{reset}
@@ -232,7 +232,7 @@ issues in the standalone document.  For LaTeX output the numbered
      - Override for the HTML ``<figcaption>`` text. Defaults to the register
        name and address when not set.
    * - ``:scale:``
-     - integer 0–100
+     - integer 0-100
      - ``100``
      - Scale factor as a percentage.
    * - ``:border:``
@@ -240,7 +240,7 @@ issues in the standalone document.  For LaTeX output the numbered
      - ``6pt``
      - Padding added around the diagram before the page is cropped. The
        ``register`` package's rotated field names typically need more space
-       than ``bytefield`` diagrams; ``12pt``–``16pt`` is a reasonable
+       than ``bytefield`` diagrams; ``12pt``-``16pt`` is a reasonable
        starting point.
 
 
@@ -363,7 +363,7 @@ The XML declaration (``<?xml ... ?>``) and DOCTYPE are stripped before the SVG
 is written into the HTML body, as both are invalid inside an HTML5 document.
 Each diagram is wrapped in a ``<figure>`` element:
 
-.. code-block:: html
+.. code-block:: text
 
    <!-- bytefield -->
    <figure class="bytefield-diagram" style="text-align:center; ... ">
@@ -448,7 +448,7 @@ Diagram is clipped
 
    Any valid TeX length is accepted (``8pt``, ``0.5cm``, ``2ex``, etc.).
    The ``register`` package's rotated field names typically need more space
-   than ``bytefield`` diagrams; ``12pt``–``16pt`` is a reasonable starting
+   than ``bytefield`` diagrams; ``12pt``-``16pt`` is a reasonable starting
    point.
 
 Compilation errors during development

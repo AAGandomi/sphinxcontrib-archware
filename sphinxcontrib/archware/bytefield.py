@@ -19,10 +19,17 @@ import textwrap
 from typing import Any
 
 from docutils import nodes
-from docutils.parsers.rst import Directive, directives
+from docutils.parsers.rst import directives
 from sphinx.util import logging
+from sphinx.util.docutils import SphinxDirective
 
-from .pipeline import clean_svg, compile_to_svg, error_block, get_cache_dir
+from .pipeline import (
+    _LATEX_TEMPLATE_FOR_SVG_EXPORT,
+    clean_svg,
+    compile_to_svg,
+    error_block,
+    get_cache_dir,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -36,11 +43,11 @@ logger = logging.getLogger(__name__)
 #
 # Always-included packages
 # ------------------------
-# rotating  – \turnbox used by \bitlabel / \rotbitheader
-# xcolor    – \color, \textcolor, \colorbox used by \colorbitbox
-# graphicx  – \includegraphics, \rotatebox (common in hardware docs)
-# array     – extended column types for tabular inside bit boxes
-# multirow  – \multirow for spanning rows in tables inside boxes
+# rotating  - \turnbox used by \bitlabel / \rotbitheader
+# xcolor    - \color, \textcolor, \colorbox used by \colorbitbox
+# graphicx  - \includegraphics, \rotatebox (common in hardware docs)
+# array     - extended column types for tabular inside bit boxes
+# multirow  - \multirow for spanning rows in tables inside boxes
 #
 # Always-included custom commands
 # --------------------------------
@@ -64,53 +71,6 @@ logger = logging.getLogger(__name__)
 #     A \bitbox whose content is wrapped in a centred \parbox, useful for
 #     longer descriptions that must line-wrap inside a field cell.
 
-_LATEX_TEMPLATE = textwrap.dedent(
-    r"""
-    \documentclass[varwidth, crop=true, border={border}]{{standalone}}
-    \usepackage[T1]{{fontenc}}
-    \usepackage{{lmodern}}
-    \usepackage{{rotating}}
-    \usepackage{{xcolor}}
-    \usepackage{{graphicx}}
-    \usepackage{{array}}
-    \usepackage{{multirow}}
-    \usepackage[{pkg_options}]{{bytefield}}
-    {extra_packages}
-    %% -----------------------------------------------------------------------
-    %% \colorbitbox[sides]{{color}}{{width}}{{content}}
-    \newcommand{{\colorbitbox}}[4][lrtb]{{%
-      \rlap{{\bitbox[]{{#3}}{{\textcolor{{#2}}{{\rule{{\width}}{{\height}}}}}}}}%
-      \bitbox[#1]{{#3}}{{#4}}%
-    }}
-    %% \bitlabel{{width}}{{label}}  –  borderless box with 45-degree rotated label
-    \newcommand{{\bitlabel}}[2]{{%
-      \bitbox[]{{#1}}{{%
-        \raisebox{{0pt}}[4ex][0pt]{{%
-          \turnbox{{45}}{{\fontsize{{7}}{{7}}\selectfont #2}}%
-        }}%
-      }}%
-    }}
-    %% \rotbitheader{{label}}  –  single-bit rotated header label
-    \newcommand{{\rotbitheader}}[1]{{\bitlabel{{1}}{{#1}}}}
-    %% \memsection{{name}}{{size}}{{startaddr}}{{endaddr}}
-    \newlength{{\memsectionheight}}
-    \setlength{{\memsectionheight}}{{5\baselineskip}}
-    \newcommand{{\memsection}}[4]{{%
-      \bytefieldsetup{{bitheight=\memsectionheight}}%
-      \bitbox[]{{6}}{{\tt\scriptsize\begin{{tabular}}{{@{{}}r@{{}}}}#3\\#4\end{{tabular}}}}%
-      \bitbox{{26}}{{#1\\{{\small(#2)}}}}%
-    }}
-    %% \descbox{{width}}{{content}}  –  centred word-wrapped description cell
-    \newcommand{{\descbox}}[2]{{%
-      \bitbox{{#1}}{{\parbox{{\width}}{{\centering\small #2}}}}%
-    }}
-    %% -----------------------------------------------------------------------
-    \begin{{document}}
-    {body}
-    \end{{document}}
-"""
-).lstrip()
-
 
 def _build_source(
     latex_body: str,
@@ -125,10 +85,11 @@ def _build_source(
         if pkg:
             pkg_lines += f"\\usepackage{{{pkg}}}\n"
 
-    return _LATEX_TEMPLATE.format(
+    return _LATEX_TEMPLATE_FOR_SVG_EXPORT.format(
         border=border,
-        pkg_options=pkg_options,
+        bytefield_pkg_options=pkg_options,
         extra_packages=pkg_lines,
+        register_pkg_options="",
         body=latex_body,
     )
 
@@ -159,7 +120,7 @@ class bytefield_node(nodes.General, nodes.Element):
 # ---------------------------------------------------------------------------
 
 
-class BytefieldDirective(Directive):
+class BytefieldDirective(SphinxDirective):
     """
     Render a ``bytefield`` diagram as inline SVG (HTML) or raw LaTeX.
 
@@ -206,14 +167,16 @@ class BytefieldDirective(Directive):
         latex_body = (
             f"\\begin{{bytefield}}{opt_str}{{{bitwidth}}}\n"
             f"{latex_body}\n"
-            f"\\end{{bytefield}}"
+            f"\\end{{bytefield}}\n"
         )
 
         scale_raw = self.options.get("scale", None)
 
         node = bytefield_node()
         node["latex"] = latex_body
-        node["pkg_options"] = self.options.get("options", "")
+        node["pkg_options"] = self.options.get(
+            "options", getattr(self.env.config, "bytefield_package_options", "")
+        )
         node["packages"] = self.options.get("packages", "")
         node["align"] = self.options.get("align", "center")
         node["caption"] = self.options.get("caption", "")
@@ -277,7 +240,7 @@ def visit_bytefield_latex(self: Any, node: bytefield_node) -> None:
 
 
 def depart_bytefield_latex(self: Any, node: bytefield_node) -> None:
-    pass
+    pass  # never reached — visit raises SkipNode
 
 
 # ---------------------------------------------------------------------------

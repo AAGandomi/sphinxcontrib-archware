@@ -31,12 +31,10 @@ artefacts share the same stem inside the cache directory::
         diagram-<hash>.tex
         diagram-<hash>.dvi   (or .pdf)
         diagram-<hash>.log
+        diagram-<hash>.latex.log
+        diagram-<hash>.pdflatex.log
         diagram-<hash>.aux
         diagram-<hash>.svg   ← sentinel: if this exists, the pipeline is skipped
-
-The cache directory sits one level above the format-specific output directory
-(e.g. ``_build/``) so it is shared across ``make html``, ``make latexpdf``,
-etc., and survives ``make clean`` (which removes only ``_build/html``).
 
 Compilation priority
 --------------------
@@ -55,11 +53,73 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
+import textwrap
 from typing import Any
 
 from sphinx.util import logging
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Latex template for SVG output
+# ---------------------------------------------------------------------------
+
+_LATEX_TEMPLATE_FOR_SVG_EXPORT = textwrap.dedent(
+    r"""
+    \documentclass[varwidth, crop=true, border={border}]{{standalone}}
+    \usepackage[T1]{{fontenc}}
+    \usepackage{{lmodern}}
+    \usepackage{{rotating}}
+    \usepackage{{xcolor}}
+    \usepackage{{graphicx}}
+    \usepackage{{array}}
+    \usepackage{{multirow}}
+    \usepackage[{bytefield_pkg_options}]{{bytefield}}
+    \usepackage[{register_pkg_options}]{{register}}
+    \usepackage{{amsmath}}
+    \usepackage{{pict2e}}
+    \usepackage{{eulervm}}
+    {extra_packages}
+    %% -----------------------------------------------------------------------
+    %% \colorbitbox[sides]{{color}}{{width}}{{content}}
+    \newcommand{{\colorbitbox}}[4][lrtb]{{%
+      \rlap{{\bitbox[]{{#3}}{{\textcolor{{#2}}{{\rule{{\width}}{{\height}}}}}}}}%
+      \bitbox[#1]{{#3}}{{#4}}%
+    }}
+    %% \bitlabel{{width}}{{label}}  -  borderless box with 45-degree rotated label
+    \newcommand{{\bitlabel}}[2]{{%
+      \bitbox[]{{#1}}{{%
+        \raisebox{{0pt}}[4ex][0pt]{{%
+          \turnbox{{45}}{{\fontsize{{7}}{{7}}\selectfont #2}}%
+        }}%
+      }}%
+    }}
+    %% \rotbitheader{{label}}  -  single-bit rotated header label
+    \newcommand{{\rotbitheader}}[1]{{\bitlabel{{1}}{{#1}}}}
+    %% \memsection{{name}}{{size}}{{startaddr}}{{endaddr}}
+    \newlength{{\memsectionheight}}
+    \setlength{{\memsectionheight}}{{5\baselineskip}}
+    \newcommand{{\memsection}}[4]{{%
+      \bytefieldsetup{{bitheight=\memsectionheight}}%
+      \bitbox[]{{6}}{{\tt\scriptsize\begin{{tabular}}{{@{{}}r@{{}}}}\texttt{{#3}}\\\texttt{{#4}}\end{{tabular}}}}%
+      \bitbox{{26}}{{#1\\{{\small(#2)}}}}%
+    }}
+    %% \descbox{{width}}{{content}}  -  centred word-wrapped description cell
+    \newcommand{{\descbox}}[2]{{%
+      \bitbox{{#1}}{{\parbox{{\width}}{{\centering\small #2}}}}%
+    }}
+    %% -----------------------------------------------------------------------
+    %% Make Regfloat a no-op so the float package's internal machinery
+    %% (\lastbox, \unkern, \unpenalty, group nesting) is never invoked.
+    %% The [1][] spec consumes the optional placement argument [H] that
+    %% register* passes.  register* already provides \centering itself.
+    \renewenvironment{{Regfloat}}[1][]{{}}{{}}
+    %% ----------------------------------------------------------------------
+    \begin{{document}}
+    {body}
+    \end{{document}}
+"""
+).lstrip()
 
 # ---------------------------------------------------------------------------
 # Cache configuration
