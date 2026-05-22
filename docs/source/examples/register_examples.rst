@@ -5,12 +5,6 @@ This page reproduces all diagrams from the ``register`` package documentation
 (v2.0, Matthew Lovell).  Every example uses the ``.. register::`` directive.
 Field descriptions are written with ``.. regdesc::``.
 
-A ``.. listofregisters::`` at the top of this page generates the complete
-list of registers:
-
-.. listofregisters::
-
-
 Diagnostic Control (Register 2.1)
 ----------------------------------
 
@@ -260,6 +254,22 @@ case the caption shows only the register name.
    \reglabel{Reset}
 
 
+The ``register`` package allows the address argument to be empty.  In that
+case the caption shows only the register name.
+
+.. register::
+   :name:     Control Word (with caption)
+   :caption:  This is an example caption for Control Word.
+   :bitwidth: 32
+
+   \regfield{Enable}{1}{31}{0}
+   \regfield{Mode}{3}{28}{000}
+   \regfield{reserved}{12}{16}{0}
+   \regfield{Threshold}{16}{0}{{0x0000}}
+   \reglabel{Reset}
+
+
+
 Wide register with many rows
 ------------------------------
 
@@ -300,3 +310,25 @@ and the ``\regBitWidth`` / ``:bitwidth:`` option.
 
    Base Address
       32-bit physical address of the associated data buffer.
+
+
+List of registers
+------------------------------
+
+Finally, ``.. listofregisters::`` generates the complete list of registers.
+
+.. warning:: Be aware that ``register``'s ``\listofregisters`` command has been redefined in this project.
+
+
+``listofregisters`` was meant to be used as an Index (a table of figures of sort),
+not as a simple list of registers in the document.
+This rendering does not fit well for HTML outputs, where an index may cause
+headaches with over-filled indexes, reference collisions, and indexed captions.
+
+Instead of having two wildly different outputs, Archware's design decision
+has been to uniform the output as a bullet list with links to each register
+(referenced by name and address).
+
+
+.. listofregisters::
+

@@ -159,8 +159,9 @@ def setup(app: Any) -> dict[str, Any]:
     app.add_config_value("register_package_options", default="", rebuild="env")
 
     # ── bytefield ─────────────────────────────────────────────────────────
-    app.add_node(
+    app.add_enumerable_node(
         bytefield_node,
+        "bytefield",
         html=(visit_bytefield_html, depart_bytefield_html),
         latex=(visit_bytefield_latex, depart_bytefield_latex),
         text=(visit_bytefield_unsupported, depart_bytefield_unsupported),
@@ -170,8 +171,9 @@ def setup(app: Any) -> dict[str, Any]:
     app.add_directive("bytefield", BytefieldDirective)
 
     # ── register diagram ──────────────────────────────────────────────────
-    app.add_node(
+    app.add_enumerable_node(
         register_node,
+        "register",
         html=(visit_register_html, depart_register_html),
         latex=(visit_register_latex, depart_register_latex),
         text=(visit_register_unsupported, depart_register_unsupported),
