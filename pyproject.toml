@@ -14,7 +14,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -34,12 +33,12 @@ Documentation = "https://sphinxcontrib-archware.readthedocs.io"
 Issues        = "https://github.com/AAGandomi/sphinxcontrib-archware/issues"
 
 [tool.poetry.dependencies]
-python = ">=3.9,<4.0"
+python = ">=3.10,<4.0"
 sphinx = ">=5.0"
 sphinx-rtd-theme = "^3.1.0"
 
 [tool.poetry.group.dev.dependencies]
-black       = ">=24.0,<25.0"
+black       = ">=26.3.1"
 pre-commit  = ">=3.0"
 # poetry-dynamic-versioning must also be installed as a Poetry plugin:
 #   poetry self add poetry-dynamic-versioning
