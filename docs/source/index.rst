@@ -150,6 +150,12 @@ Do not include the ``bytefield`` environment in the body.
      - Padding added around the diagram before the page is cropped by the
        ``standalone`` class. Increase this if labels or annotations are
        clipped.
+   * - ``:name:``
+     - string
+     - *(none)*
+     - Sphinx cross-reference target. When set, the figure becomes the target
+       of a ``:ref:`` lookup, and the name is used as an auto-generated caption
+       if ``:caption:`` is not provided.
 
 
 ``.. register::``
@@ -366,21 +372,22 @@ Each diagram is wrapped in a ``<figure>`` element:
 .. code-block:: text
 
    <!-- bytefield -->
-   <figure class="bytefield-diagram" style="text-align:center; ... ">
+   <figure class="archware-bytefield" style="text-align:center; ... ">
      <svg ... > ... </svg>
      <figcaption>Caption text</figcaption>
    </figure>
 
    <!-- register -->
-   <figure class="register-diagram" id="register-1-function-class" ... >
+   <figure class="archware-register" id="function-class" ... >
      <svg ... > ... </svg>
      <figcaption>Function Class (0x0008)</figcaption>
    </figure>
 
-The CSS classes ``bytefield-diagram`` and ``register-diagram`` can be
-targeted in your Sphinx theme's stylesheet to apply project-wide styling.
-Each ``register`` figure also receives a stable ``id`` attribute derived
-from its name and position, which is used by the ``listofregisters`` links.
+The HTML classes ``archware-bytefield`` and ``archware-register`` can be
+styled by your Sphinx theme's stylesheet to apply project-wide styling.
+When a diagram is given the ``:name:`` option, the surrounding ``<figure>``
+receives a stable ``id`` attribute derived from that name and is used by
+the ``listofregisters`` links and any ``:ref:`` cross-references.
 
 
 LaTeX output
@@ -409,6 +416,66 @@ For ``register`` diagrams Sphinx emits the numbered ``\begin{register}``
 float (not the starred form), so register numbering and ``\listofregisters``
 work correctly in the PDF output.
 
+Dark mode support
+-----------------
+The default stroke colour used by the ``bytefield`` and ``register`` LaTeX
+packages is black, which is unreadable when the rendered SVG is embedded in
+a page with a dark background.  The ``archware_stroke_color`` config value
+prepends ``\color{<name>}`` to the LaTeX body of every diagram, switching
+the stroke (and any default-coloured text) to the chosen colour:
+
+.. code-block:: python
+
+   # Switch all bytefield / register strokes to white for dark themes
+   archware_stroke_color = "white"
+
+   # Or pick any other xcolor name
+   archware_stroke_color = "black"
+
+The value is forwarded verbatim as the argument to ``\color{...}``.  Any
+colour name understood by the `xcolor LaTeX package
+<https://ctan.org/pkg/xcolor>`_ may be used — the default ``xcolor`` name
+list provides ``black``, ``white``, ``red``, ``green``, ``blue``,
+``cyan``, ``magenta``, ``yellow``, and several more.  Loading ``xcolor``
+with one of its colour-set options (``dvipsnames``, ``svgnames``,
+``x11names``) in your preamble exposes a much larger palette.
+
+Leave the value empty (the default) to disable the override and keep the
+native black stroke.
+
+Referencing bytefield and register figures
+------------------------------------------
+
+The ``bytefield`` and ``register`` directives support cross-referencing through standard
+Sphinx mechanisms.
+While it is possible to use LaTeX ``\hyperref`` commands within the directives' LaTeX code,
+these references are only resolved during LaTeX compilation and are not part of HTML builds.
+This approach is therefore not portable across Sphinx builders and is not recommended.
+The recommended Sphinx-native approach is to use the :name: option provided by the directive.
+When set, Sphinx assigns a stable document target to the generated figure,
+making it available for cross-referencing in both HTML and LaTeX outputs.
+
+For example, for ``bytefield`` directive defines the name "TCP header structure":
+
+.. code-block:: rst
+    
+  .. bytefield::
+    :bitwidth: 32
+    :caption: TCP header
+    :name: TCP header structure
+
+Hence the following usages of ``:ref:`` role:
+
+.. code-block:: rst
+
+  .. note:: You can use ``:ref:`` to link to archware figures. E.g. :ref:`TCP header structure` and :ref:`Function Class`.
+
+will render as:
+
+.. note::  You can use ``:ref:`` to link to archware figures. E.g. :ref:`TCP header structure` and :ref:`Function Class`.
+
+This approach ensures that references are resolved uniformly across all Sphinx builders,
+including HTML and LaTeX, without relying on backend-specific hyperlink mechanisms.
 
 Referencing bytefield and register figures
 ------------------------------------------

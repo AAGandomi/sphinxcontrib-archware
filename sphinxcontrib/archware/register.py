@@ -232,7 +232,11 @@ class RegisterDirective(SphinxDirective):
 
         scale_raw = self.options.get("scale", None)
 
+        stroke_color = self.env.config.archware_stroke_color or ""
+        stroke_prefix = f"\\color{{{stroke_color}}}\n" if stroke_color else ""
+
         latex_body = (
+            f"{stroke_prefix}"
             f"\\renewcommand{{\\regBitWidth}}{{{self.options.get("bitwidth", 32)}}}"
             f"\\begin{{register*}}{{H}}{{{self.options.get("name", "")}}}{{{self.options.get("address", "")}}}\n"
             f"{latex_body}\n"
@@ -250,6 +254,7 @@ class RegisterDirective(SphinxDirective):
         node["caption"] = self.options.get("caption", "")
         node["border"] = self.options.get("border", "6pt")
         node["scale"] = float(scale_raw) / 100.0 if scale_raw else 1.0
+        node["stroke"] = self.env.config.archware_stroke_color or ""
 
         figure = nodes.figure()
         figure["classes"].append("archware-register")
@@ -289,6 +294,7 @@ class RegisterDirective(SphinxDirective):
 
 def visit_register_html(self: Any, node: register_node) -> None:
     """Compile the register diagram and splice the SVG into the HTML body."""
+
     full_source = _build_register_source(
         latex_body=node["latex"],
         pkg_options=node["pkg_options"],

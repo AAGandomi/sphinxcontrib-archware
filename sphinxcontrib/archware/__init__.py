@@ -157,6 +157,7 @@ def setup(app: Any) -> dict[str, Any]:
     # ── Config values readable from conf.py ───────────────────────────────
     app.add_config_value("bytefield_package_options", default="", rebuild="env")
     app.add_config_value("register_package_options", default="", rebuild="env")
+    app.add_config_value("archware_stroke_color", default="", rebuild="env")
 
     # ── bytefield ─────────────────────────────────────────────────────────
     app.add_enumerable_node(
