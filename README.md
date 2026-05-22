@@ -13,6 +13,14 @@ It provides directives for rendering
 and [`register`](https://ctan.org/pkg/register) hardware register diagrams
 as inline SVG in HTML output, and as native LaTeX floats in PDF output.
 
+## Examples
+
+| Light Mode (default, black stroke) |  Dark Mode (white stroke) |
+:-------------------------:|:-------------------------:
+| <div style=" background: white" > ![Memory layout (black stroke)](docs/source/_static/examples/diagram-f4b25b6de33ff213.svg) </div> | <div style=" background: black" > ![Memory layout (white stroke)](docs/source/_static/examples/diagram-d2477635f9b9fc6b.svg)</div> |
+|  <div style=" background: white" > ![Register Mapping (black stroke)](docs/source/_static/examples/diagram-50a7b81a3e14707c.svg)  </div>| <div style=" background: black" > ![Register Mapping (white stroke)](docs/source/_static/examples/diagram-f78e0c7ecc2909d4.svg) </div>  |
+|  <div style=" background: white" > ![Frame layout (black stroke)](docs/source/_static/examples/diagram-09a5de59a82a6702.svg)  </div> | <div style=" background: black" > ![Frame layout (white stroke)](docs/source/_static/examples/diagram-ca3b1986403be40d.svg) </div>  |
+
 ## Directives
 
 | Directive | Description |

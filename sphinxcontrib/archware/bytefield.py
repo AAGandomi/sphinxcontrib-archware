@@ -183,6 +183,7 @@ class BytefieldDirective(SphinxDirective):
         node["caption"] = self.options.get("caption", "")
         node["border"] = self.options.get("border", "6pt")
         node["scale"] = float(scale_raw) / 100.0 if scale_raw else 1.0
+        node["stroke"] = self.env.config.archware_stroke_color or ""
 
         figure = nodes.figure()
         figure["classes"].append("archware-bytefield")
@@ -218,6 +219,7 @@ class BytefieldDirective(SphinxDirective):
 
 def visit_bytefield_html(self: Any, node: bytefield_node) -> None:
     """Compile the diagram and splice the resulting SVG into the HTML body."""
+
     full_source = _build_source(
         latex_body=node["latex"],
         pkg_options=node["pkg_options"],
