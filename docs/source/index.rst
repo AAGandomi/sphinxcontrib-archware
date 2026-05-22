@@ -410,6 +410,41 @@ float (not the starred form), so register numbering and ``\listofregisters``
 work correctly in the PDF output.
 
 
+Referencing bytefield and register figures
+------------------------------------------
+
+The ``bytefield`` and ``register`` directives support cross-referencing through standard
+Sphinx mechanisms.
+While it is possible to use LaTeX ``\hyperref`` commands within the directives' LaTeX code,
+these references are only resolved during LaTeX compilation and are not part of HTML builds.
+This approach is therefore not portable across Sphinx builders and is not recommended.
+The recommended Sphinx-native approach is to use the :name: option provided by the directive.
+When set, Sphinx assigns a stable document target to the generated figure,
+making it available for cross-referencing in both HTML and LaTeX outputs.
+
+For example, for ``bytefield`` directive defines the name "TCP header structure":
+
+.. code-block:: rst
+    
+  .. bytefield::
+    :bitwidth: 32
+    :caption: TCP header
+    :name: TCP header structure
+
+Hence the following usages of ``:ref:`` role:
+
+.. code-block:: rst
+
+  .. note:: You can use ``:ref:`` to link to archware figures. E.g. :ref:`TCP header structure` and :ref:`Function Class`.
+
+will render as:
+
+.. note::  You can use ``:ref:`` to link to archware figures. E.g. :ref:`TCP header structure` and :ref:`Function Class`.
+
+This approach ensures that references are resolved uniformly across all Sphinx builders,
+including HTML and LaTeX, without relying on backend-specific hyperlink mechanisms.
+
+
 Troubleshooting
 ---------------
 

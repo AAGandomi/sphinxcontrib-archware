@@ -141,6 +141,7 @@ class BytefieldDirective(SphinxDirective):
         "caption": directives.unchanged,
         "scale": directives.percentage,
         "border": directives.unchanged,
+        "name": directives.unchanged,
     }
 
     def run(self) -> list[nodes.Node]:
@@ -182,7 +183,32 @@ class BytefieldDirective(SphinxDirective):
         node["caption"] = self.options.get("caption", "")
         node["border"] = self.options.get("border", "6pt")
         node["scale"] = float(scale_raw) / 100.0 if scale_raw else 1.0
-        return [node]
+
+        figure = nodes.figure()
+        figure["classes"].append("archware-bytefield")
+        figure["align"] = "center"
+
+        figure += node
+        user_caption = self.options.get("caption", "")
+        caption_text = user_caption
+        auto_caption = False
+        if not caption_text:
+            caption_text = self.options.get("name", "")
+            if caption_text:
+                auto_caption = True
+        if caption_text:
+            caption = nodes.caption()
+            caption_nodes, _ = self.state.inline_text(caption_text, self.lineno)
+            caption += caption_nodes
+            figure += caption
+
+        if auto_caption:
+            figure["archware_auto_caption"] = True
+
+        # --- THIS is the only thing needed for references ---
+        self.add_name(figure)
+
+        return [figure]
 
 
 # ---------------------------------------------------------------------------
@@ -205,20 +231,10 @@ def visit_bytefield_html(self: Any, node: bytefield_node) -> None:
         raise nodes.SkipNode from exc
 
     align = node["align"]
-    caption = node["caption"]
     svg = clean_svg(svg_raw, scale=node["scale"])
 
-    self.body.append(
-        f'<figure class="bytefield-diagram"'
-        f' style="text-align:{align};display:block;margin:1em auto">\n'
-    )
     self.body.append(svg)
-    if caption:
-        self.body.append(
-            f'\n<figcaption style="font-size:.875em;color:#555;margin-top:.4em">'
-            f"{_html_mod.escape(caption)}</figcaption>"
-        )
-    self.body.append("\n</figure>\n")
+
     raise nodes.SkipNode
 
 

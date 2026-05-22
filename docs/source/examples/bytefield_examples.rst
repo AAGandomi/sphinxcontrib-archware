@@ -82,6 +82,7 @@ TCP with all flag bits labelled using rotated single-bit headers.
 .. bytefield::
    :bitwidth: 32
    :caption: TCP header
+   :name: TCP header structure
 
    \bitheader{0,15-16,31} \\
    \bitbox{16}{Source Port} &
@@ -336,8 +337,14 @@ left column; the region name and size fill the remaining 26 bits.
    \memsection{Flash}{64 KB}{0xF0000}{0xFFFFF}
 
 
-MTP protocol — hyperref integration
+MTP protocol (hyperref usage)
 ------------------------------------
+
+.. warning:: ``hyperref`` usage is not recommended.
+
+   Regular Sphinx labels and ``:ref:`` can be used to link to a specific
+   ``bytefield`` figure with the ``:name:`` option.
+   E.g. :ref:`TCP header structure`.
 
 This example is taken directly from the ``bytefield`` package documentation.
 It shows how hyperlinks can be embedded inside bit fields using the

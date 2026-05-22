@@ -150,21 +150,6 @@ def _nodes_to_latex(node_list) -> str:
     return "".join(_node_to_latex(n) for n in node_list)
 
 
-# ---------------------------------------------------------------------------
-# Node ID helpers
-# ---------------------------------------------------------------------------
-
-_SLUG_RE = re.compile(r"[^\w\s-]")
-_WS_RE = re.compile(r"[\s_]+")
-
-
-def _make_node_id(name: str, index: int) -> str:
-    """Return a stable, URL-safe HTML id for a register node."""
-    slug = _SLUG_RE.sub("", name.lower())
-    slug = _WS_RE.sub("-", slug).strip("-")
-    return f"register-{index}-{slug}" if slug else f"register-{index}"
-
-
 # ===========================================================================
 # register  (diagram)
 # ===========================================================================
@@ -186,7 +171,6 @@ class register_node(nodes.General, nodes.Element):
     caption         Override for the HTML ``<figcaption>`` text.
     border          TeX length for the ``standalone`` border before crop.
     scale           Float SVG scale multiplier (1.0 = 100 %).
-    node_id         HTML element ``id``; assigned by ``doctree-resolved``.
     """
 
 
@@ -229,6 +213,7 @@ class RegisterDirective(SphinxDirective):
             ]
 
         latex_body = "\n".join(self.content)
+
         if not latex_body.strip():
             return [
                 self.state_machine.reporter.warning(
@@ -265,8 +250,38 @@ class RegisterDirective(SphinxDirective):
         node["caption"] = self.options.get("caption", "")
         node["border"] = self.options.get("border", "6pt")
         node["scale"] = float(scale_raw) / 100.0 if scale_raw else 1.0
-        node["node_id"] = ""  # filled in by on_doctree_resolved
-        return [node]
+
+        figure = nodes.figure()
+        figure["classes"].append("archware-register")
+        figure["align"] = "center"
+
+        user_caption = self.options.get("caption", "")
+        caption_text = user_caption
+        auto_caption = False
+        if not caption_text:
+            reg_name = self.options.get("name", "")
+            reg_addr = self.options.get("address", "")
+            if reg_name and reg_addr:
+                caption_text = f"{reg_name} ({reg_addr})"
+                auto_caption = True
+            elif reg_name:
+                caption_text = reg_name
+                auto_caption = True
+
+        figure += node
+        if caption_text:
+            caption = nodes.caption()
+            caption_nodes, _ = self.state.inline_text(caption_text, self.lineno)
+            caption += caption_nodes
+            figure += caption
+
+        if auto_caption:
+            figure["archware_auto_caption"] = True
+
+        # --- THIS is the only thing needed for references ---
+        self.add_name(figure)
+
+        return [figure]
 
 
 # ── HTML visitors ─────────────────────────────────────────────────────────────
@@ -286,24 +301,10 @@ def visit_register_html(self: Any, node: register_node) -> None:
         self.body.append(error_block(node["latex"], str(exc)))
         raise nodes.SkipNode from exc
 
-    align = node["align"]
-    caption = node["caption"] or node["name"]
-    if node["address"]:
-        caption = f"{caption} ({node['address']})"
-    node_id = node["node_id"]
     svg = clean_svg(svg_raw, scale=node["scale"])
 
-    id_attr = f' id="{_html_mod.escape(node_id)}"' if node_id else ""
-    self.body.append(
-        f'<figure class="register-diagram"{id_attr}'
-        f' style="text-align:{align};display:block;margin:1em auto">\n'
-    )
     self.body.append(svg)
-    self.body.append(
-        f'\n<figcaption style="font-size:.875em;color:#555;margin-top:.4em">'
-        f"{_html_mod.escape(caption)}</figcaption>"
-    )
-    self.body.append("\n</figure>\n")
+
     raise nodes.SkipNode
 
 
@@ -321,10 +322,30 @@ def visit_register_latex(self: Any, node: register_node) -> None:
     The unstarred environment is used so that the diagram is counted, captioned,
     and listed by ``\\listofregisters``.
     """
+
     latex_body = node["latex"].replace(node["name"], _latex_escape(node["name"]))
     latex_body = latex_body.replace(node["address"], _latex_escape(node["address"]))
+
+    # This prevents double references (both name+address and caption).
+    # If the caption is empty, then the name+address serve as reference.
     latex_body = latex_body.replace("register*", "register")
+
     self.body.append(latex_body)
+
+    # Emit \label{<docname>:<id>} for every id on the parent figure only
+    # when the figure's caption was auto-stripped at doctree-resolved time.
+    # In that case Sphinx's figure visitor has no caption to bind a label
+    # to and skips it, leaving :ref: targets dangling.  When the user
+    # provides :caption: explicitly Sphinx emits the label itself, so
+    # emitting again would duplicate it.
+    figure = node.parent
+    if (
+        isinstance(figure, nodes.figure)
+        and figure.get("ids")
+        and figure.get("archware_auto_caption")
+    ):
+        self.body.append(self.hypertarget_to(figure))
+
     raise nodes.SkipNode
 
 
@@ -552,55 +573,72 @@ def depart_listofregisters_unsupported(self: Any, node: listofregisters_node) ->
 
 def on_doctree_resolved(app: Any, doctree: Any, docname: str) -> None:
     """
-    Assign stable HTML IDs to every ``register_node`` and replace every
-    ``listofregisters_node`` with a concrete list.
+    Replace every ``listofregisters_node`` with a concrete list, and strip
+    auto-generated captions from bytefield / register figures.
 
     This event fires once per document, after the doctree is fully resolved
-    but before any writer processes it.
+    but before any writer processes it.  Captions auto-generated solely to
+    make ``:ref:`` resolution work (figures with ``:name:`` but no
+    ``:caption:``) are removed here so they do not appear in the output.
+    Sphinx's std-domain caption index is populated during the read phase
+    and is unaffected by this removal.
     """
-    # ── Pass 1: assign node_id to every register_node ────────────────────────
     register_nodes = list(doctree.traverse(register_node))
-    for idx, rnode in enumerate(register_nodes, start=1):
-        rnode["node_id"] = _make_node_id(rnode["name"], idx)
-
-    # ── Pass 2: replace listofregisters_node placeholders ────────────────────
     for lor_node in doctree.traverse(listofregisters_node):
-        replacement = _build_listofregisters(register_nodes, app.builder)
+        replacement = _build_listofregisters(register_nodes)
         lor_node.replace_self(replacement)
+
+    for fig in doctree.traverse(nodes.figure):
+        if not fig.get("archware_auto_caption"):
+            continue
+        for child in list(fig.children):
+            if isinstance(child, nodes.caption):
+                fig.remove(child)
 
 
 def _build_listofregisters(
     reg_nodes: list[register_node],
-    builder: Any,
 ) -> list[nodes.Node]:
     """
     Build the concrete replacement for a ``listofregisters_node``.
 
-    For LaTeX output: a single ``nodes.raw`` containing ``\\listofregisters``.
-    For all other outputs: a ``bullet_list`` of internal reference nodes.
+    HTML (and all non-LaTeX builders) always return a ``bullet_list`` of
+    internal reference nodes.
     """
-    builder_format = getattr(builder, "format", "html")
-
-    if builder_format == "latex":
-        return [nodes.raw("", "\\listofregisters\n", format="latex")]
-
-    if not reg_nodes:
-        return []
 
     bullet_list = nodes.bullet_list(classes=["listofregisters"])
+
     for rnode in reg_nodes:
-        name = rnode["name"]
-        address = rnode["address"]
-        node_id = rnode["node_id"]
+        figure = rnode.parent
+
+        if not isinstance(figure, nodes.figure):
+            continue
+
+        if not figure["ids"]:
+            continue
+
+        target_id = figure["ids"][0]
+
+        name = rnode.get("name")
+        address = rnode.get("address")
 
         display = f"{name} ({address})" if address else name
 
-        ref = nodes.reference(internal=True, refid=node_id)
+        ref = nodes.reference(
+            "",
+            "",
+            internal=True,
+            refid=target_id,
+        )
+
         ref += nodes.Text(display)
+
         para = nodes.paragraph()
         para += ref
+
         item = nodes.list_item()
         item += para
+
         bullet_list += item
 
     return [bullet_list]
